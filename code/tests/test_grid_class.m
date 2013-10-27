@@ -4,7 +4,7 @@
 
 clear all;
  
-pol_reduced = load('sop_reduced_vova'); % load Polish grid reduced by Vova
+pol_reduced = load('cases/sop_reduced'); % load Polish grid reduced by Vova
 pol_full = loadcase('case300'); % load MATPOWER unreduced Polish case
 % 'case2737sop'
 grid = Grid_class(pol_full,0,'case300');
