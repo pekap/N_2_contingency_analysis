@@ -95,7 +95,7 @@ For further explanation see [description of the code](https://github.com/pekap/N
 We use dcopf solver and grid cases from [MATPOWER](http://www.pserc.cornell.edu/matpower/) MATLAB package, which is included in our repo.  
 The algorithm presented here was developed in Prof. Kostya Turitsyn research group at MIT. Links to related works:
 
-[Original paper](http://arxiv.org/pdf/1211.0728.pdf)
+[Original paper](http://arxiv.org/pdf/1211.0728.pdf)  
 [Elaborated approach for generators as contingencies](http://arxiv.org/pdf/1303.3938.pdf)
 
 ### For any suggestions please contact us at
