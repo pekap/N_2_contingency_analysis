@@ -158,7 +158,7 @@ classdef Grid_class
       function obj = N_2_analysis(obj,approach)
          [exists,structure] = Grid_class.file_exists('/results/N_1_analysis_dangerous_lines',obj.case_name);
          if (exists==1)
-            % fprintf('\tSuccessfuly loaded N-1 contingency analysis file\n');
+            fprintf('\tSuccessfuly loaded N-1 contingency analysis file\n');
             if (sum(structure.lines(:)>0)>0)
                fprintf('Grid is not N-1 secure. Automatically increasing limits through lines \n');
                obj = obj.N_1_protect(structure.lines,structure.margins);
@@ -168,7 +168,7 @@ classdef Grid_class
                obj.L = structure.L;
                obj.lim = structure.limits;
                if (strcmp(sprintf(approach),sprintf('bruteforce')))
-                  Grid_class.beauty_print('Start bruteforce N-2 analysis');
+                  Grid_class.beauty_print('Start fast N-2 analysis');
                   obj = obj.run_N_2_bruteforce(ones(Sz.r(obj.E),Sz.r(obj.E)));
                   fprintf('\n\tRunning time for brute force algorithm is %d sec \n',obj.t_brute);
                   [pathfile] = obj.create_full_path('/results/N_2_analysis_brute_force_algorithm',obj.case_name);
@@ -222,7 +222,7 @@ classdef Grid_class
          kmax = 4; % maximum number of iterations before stop
          while (changing==1)&&(k<kmax)
             oldA = sum(A0(:)); oldB = sum(B0(:)); % remember number of pair to undertand when to stop
-            fprintf('\t %d iteration: number of potential confingecies::%d, B::%d\n',k,oldA/2,oldB);
+            fprintf('\t %d iteration: A::%d B::%d\n',k,oldA/2,oldB);
             % PHASE I
             Wbuf1 = max((diag(max(Bp))*A),(diag(min(Bp))*A));
             Wbuf2 = max((diag(max(Bn))*A),(diag(min(Bn))*A));

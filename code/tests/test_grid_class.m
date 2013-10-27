@@ -4,7 +4,7 @@
 
 clear all;
 runcase = loadcase('case300'); % load MATPOWER unreduced Polish case
-grid = Grid_class(runcase,0,'case300');
+grid = Grid_class(runcase,'case300_experiment');
 
 [number_of_0_violations, margin_0_absolute, margin_0_relative,top_0] = grid.N_0_analysis();
 grid.N_1_analysis(); % runs N-1 analysis
