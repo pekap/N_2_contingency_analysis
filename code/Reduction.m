@@ -1,6 +1,5 @@
 classdef Reduction
-   %UNTITLED2 Summary of this class goes here
-   %   Detailed explanation goes here
+  % Reduction functions for a grid
    
    properties
    end

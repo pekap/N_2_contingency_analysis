@@ -1,1 +1,5 @@
-Basic functionality for power grid N-2 contingecy analysis based on prof. Konstantin Turitsyn MIT group research
+# Fast N-2 contingency analysis algorithm
+
+Basic implementation of fast N-2 contingecy analysis algorithm developed by Prof. Konstya Turitsyn MIT research group
+
+## Work flow:

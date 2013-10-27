@@ -1,0 +1,13 @@
+% test Grid_class.m work 
+% you can load any MATPOWER case
+
+clear all;
+pol_full = loadcase('case300'); % load MATPOWER unreduced Polish case
+grid = Grid_class(pol_full,0,'case300');
+[number_of_0_violations, margin_0_absolute, margin_0_relative,top_0] = grid.N_0_analysis();
+
+%grid.N_1_analysis();
+grid.N_2_analysis('fast');
+grid.N_2_analysis('bruteforce');
+%pol_grid.dcopf();
+
