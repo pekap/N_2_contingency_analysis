@@ -2,10 +2,11 @@
 
 #### Grid_class(caseFile,customCaseName); 
 	
-	```  
+```  
+	Constructor of an object needs:
 	caseFile - MATPOWER case; 
 	customCaseName - name your case
-	```
+```
 
 1. **dcopf();** runs MATPOWER optimal power flow on the loaded case. Saves results to the structure
 
@@ -33,7 +34,7 @@ runs N-1 analysis and saves results to `'/results/N_1_analysis_dangerous_lines_{
 	```
 
 4. **N_2_analysis(approach);** 
-runs N-2 analysis and saves results to `'/results/' folder. Approach = 'fast' or 'bruteforce'`
+runs N-2 analysis and saves results to `'/results/'` folder. `Approach = 'fast' or 'bruteforce'`
 
 	```
 	among results are:
@@ -70,8 +71,8 @@ remaps odd numbered buses in grid
 #### Sz(); 
 class for fast and easy calculation of rows, columns and emptiness of any matrix
 
-	```
+```
 	rows    = Sz.r(matrix); // calculates rows of the matrix
 	columns = Sz.c(matrix); // calculates columns of the matrix
 	boolean = Sz.z(matrix); // gives true if matrix is empty and falst otherwise  
-	```
+```
