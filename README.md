@@ -8,7 +8,7 @@ the given power grid.
 In this implementation we consider only lines as contingency elements and their power limits as constraints.
 
 ### How to run
-Download this repo and add path to it to matlab path collection. 
+Clone this repo and add path to it to matlab path collection. 
 You can see example of usage in `code/tests/test_grid_class.m` file. In that file we
 
 1. Load a MATPOWER grid case from `/code/cases/` folder
