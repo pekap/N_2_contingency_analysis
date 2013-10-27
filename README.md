@@ -1,6 +1,6 @@
 ## Fast N-2 contingency analysis algorithm
 
-Basic implementation of fast N-2 contingecy analysis algorithm developed by Prof. Kostya Turitsyn MIT research group
+Basic implementation of fast N-2 contingecy analysis algorithm developed by Prof. Kostya Turitsyn MIT research group.  
 The algorithm aims to find all dangerous N-2 contingencies in the grid. 
 We call dangerous N-k contingency a set of k elements which tripping leads to violation of at least one constraint in 
 power grid. 
