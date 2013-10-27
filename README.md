@@ -3,9 +3,9 @@
 Basic implementation of fast N-2 contingecy analysis algorithm developed by Prof. Kostya Turitsyn MIT research group.  
 The algorithm aims to find all dangerous N-2 contingencies in the grid. 
 We call dangerous N-k contingency a set of k elements which tripping leads to violation of at least one constraint in 
-power grid. 
+the given power grid. 
 
-In this implementation we consider only line as contingency elements and their power limits as constraints.
+In this implementation we consider only lines as contingency elements and their power limits as constraints.
 
 ### How to run
 Download this repo and add path to it to matlab path collection. 
