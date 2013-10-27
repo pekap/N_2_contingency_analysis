@@ -1,5 +1,6 @@
 # Classes: 
 ## Grid_class(caseFile,customCaseName); 
+```
 % caseFile - MATPOWER case; % customCaseName - name your case
 dcopf() % runs MATPOWER optimal power flow on the loaded case. Saves results to the structure
 [number_of_violations, absolute_margin, relative_margin, top10] = N_0_analysis(); % runs N-0 analysis 
@@ -28,4 +29,4 @@ new_rnc = remove_parallel(rnc); % removes parallel lines from the grid rnc = MAT
 rows    = Sz.r(matrix); % calculates rows of the matrix
 columns = Sz.c(matrix); % calculates columns of the matrix
 boolean = Sz.z(matrix); % gives true if matrix is empty and falst otherwise  
-		
+```		
