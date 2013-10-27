@@ -87,3 +87,10 @@ In this case running time of our algorithm was almost 200 _~O(Number of branches
     1. 'bruteforce' just enumerates all possible pairs
     2. 'fast' uses developed algorithm to shrink the search space and then enumerates over it
   4. Results are being recorded to file in '/results/' folder. The results file contains all dangerous contingencies 
+
+For further explanation see (description of the code)[https://github.com/pekap/N_2_contingency_analysis/tree/master/code] and comment inside class files
+
+### For any suggestions please contact us at
+
+Petya Kaplunovich pekap@mit.edu
+Kostya Turitsyn   turitsyn@mit.edu
