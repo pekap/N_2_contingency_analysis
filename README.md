@@ -88,7 +88,15 @@ In this case running time of our algorithm was almost 200 _~O(Number of branches
     2. 'fast' uses developed algorithm to shrink the search space and then enumerates over it
   4. Results are being recorded to file in '/results/' folder. The results file contains all dangerous contingencies 
 
-For further explanation see [description of the code](https://github.com/pekap/N_2_contingency_analysis/tree/master/code) and comment inside class files
+For further explanation see [description of the code](https://github.com/pekap/N_2_contingency_analysis/tree/master/code) and comments inside class files
+
+### Links
+
+We use dcopf solver and grid cases from [MATPOWER](http://www.pserc.cornell.edu/matpower/) MATLAB package, which is included in our repo.  
+The algorithm presented here was developed in Prof. Kostya Turitsyn research group at MIT. Links to related works:
+
+[Original paper](http://arxiv.org/pdf/1211.0728.pdf)
+[Elaborated approach for generators as contingencies](http://arxiv.org/pdf/1303.3938.pdf)
 
 ### For any suggestions please contact us at
 
