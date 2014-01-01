@@ -33,7 +33,7 @@ classdef Reduction
                end
             else
                if (~Sz.z(similar2))
-                  E(i,3)=similar2(2);
+                  E(i,3)=similar2(1);
                else
                   E(i,3)=i;
                end
@@ -41,7 +41,7 @@ classdef Reduction
          end
          structure = E; % old E + column of remapped lines 
       end
-      function [new_E,new_C,new_P,new_g,new_x,new_lim,new_oldf] = remove_leafes(E,C,P,g,x,lim,oldf) % g - ground bus
+      function [new_E,new_C,new_P,new_g,new_x,new_lim,new_oldf,rnc] = remove_leafes(E,C,P,g,x,lim,oldf,rnc) % g - ground bus
          w = zeros(Sz.c(C),1); P(:,2)=P(:,1); E(:,3)=ones(Sz.r(E),1); E(:,4)=1:Sz.r(E);
          for i=1:Sz.c(C)
             w(i)=sum(abs(C(:,i))); % number of neighbours of each bus
@@ -86,6 +86,8 @@ classdef Reduction
          new_lim = lim(lines(:));
          new_E = E(:,1:2);
          new_P = P(w(:,2),2);
+         % rnc.bus = rnc.bus(w(:,2),:);
+         % rnc.branch = rnc.branch(lines(:)); rnc.branch(:,9) = new_lim;
          new_C = C(lines(:),w(:,2));
          new_x = x(lines(:));
       end

@@ -16,6 +16,10 @@ classdef Grid_class
       B; % susceptance matrix
       lim; % vector of limits
       L; % LODF matrix
+      Mask;
+      filtered_size; % size of the filtered set after fast algorithm
+      C1_isl; % set of signle islanding outages
+      C2_isl; % set of double islanding outages
       gr_bus; % number of ground bus
       oldf; % buffer variable to remember flows on previous step
       brute_cont; % Brute-force calculated contingencies
@@ -39,8 +43,8 @@ classdef Grid_class
          else rmpath(path40); end      
       end
       
-      function obj = Grid_class(rc,case_name) % Class Constructor
-         version = 0;
+      function obj = Grid_class(rc,case_name,version) % Class Constructor
+         %version = 1;
          obj.case_name = case_name;
          obj.path = obj.setpath(version);
          [rc,obj.map] = Reduction.remap_grid(rc); % correct numbering of buses in the grid 
@@ -56,14 +60,15 @@ classdef Grid_class
          obj.C = obj.create_C(); % C matrix (each row - one line that has 1 at 'from' bus and -1 at 'to' bus)
          obj.oldf = obj.rnc.branch(:,14); % Power flows calculated by MATPOWER
          obj.lim = obj.rnc.branch(:,6); % Limits
-         
+                  
          % Remove leafes
-         [obj.E,obj.C,obj.P,obj.gr_bus,obj.x,obj.lim,obj.oldf] = Reduction.remove_leafes(obj.E,obj.C,obj.P,obj.gr_bus,obj.x,obj.lim,obj.oldf);
+         %[obj.E,obj.C,obj.P,obj.gr_bus,obj.x,obj.lim,obj.oldf,obj.rnc] = Reduction.remove_leafes(obj.E,obj.C,obj.P,obj.gr_bus,obj.x,obj.lim,obj.oldf,obj.rnc);
          
          % Calculate essential matrices
          obj.B = obj.create_B(); % Susceptance matrix
          obj = obj.ground_bus(); % Ground a ground bus
          obj.f = diag(1./obj.x)*obj.C*(obj.B\obj.P); % calculate flow vector
+      
       end
       function P = create_P(obj) % collects P vector
          P = zeros(Sz.r(obj.rnc.bus),1);
@@ -82,14 +87,7 @@ classdef Grid_class
          end
       end
       function B = create_B(obj) % B matrix
-         B = zeros(Sz.r(obj.P),Sz.r(obj.P));
-         for i=1:Sz.r(obj.E)
-            B(obj.E(i,1),obj.E(i,2))=1/obj.x(i);
-            B(obj.E(i,2),obj.E(i,1))=1/obj.x(i);
-         end
-         for i=1:Sz.r(B)
-            B(i,i)=-sum(B(i,:));
-         end
+         B = obj.C'*diag(1./obj.x)*obj.C;
       end
       function obj = ground_bus(obj) % grounding one bus to make susceptance matrix invertible
          obj.C(:,obj.gr_bus)=[];
@@ -110,49 +108,56 @@ classdef Grid_class
       end
       function [number_of_violations,margin_absolute,margin_relative,top]=N_0_analysis(obj)
          [number_of_violations] = sum(abs(obj.f(:))>obj.lim(:));
-         [margin_absolute] = min(obj.lim(:)-abs(obj.f(:)));
-         [margin_relative] = min((obj.lim(:)-abs(obj.f(:)))./obj.lim(:));
+         [margin_absolute] = min(obj.lim(:)-abs(obj.f(:)));        
+         [margin_relative] = (obj.lim(:)-abs(obj.f(:)))./obj.lim(:);
          [dangerous,ind] = sort((obj.lim(:)-abs(obj.f(:)))./obj.lim(:));
          [top]=[dangerous(1:10),ind(1:10)];
       end
-      function obj = N_1_analysis(obj)
+      function obj = N_1_analysis_alternative(obj)
          Grid_class.beauty_print('   Start N-1 analysis  ');
          invB = inv(obj.B);
          reverseStr=''; k=0; lines = zeros(Sz.r(obj.E),1);
          margins = zeros(Sz.r(obj.E),1); % vector of maximum violations
          L = zeros(Sz.r(obj.E),Sz.r(obj.E));
          C1 = diag(1./obj.x)*obj.C; % calculate this matrix once for better performance
+         C1_isl = zeros(Sz.r(obj.E),1); % vector of radial contingencies
          for i=1:Sz.r(obj.E)
             % Turn off one line, invert matrix
             % using Woodbury formula inv(A+U'CU) =
             % inv(A)-inv(A)*U'*inv(inv(C)+U*inv(A)*U')*U*inv(A)
             newInvB = Grid_class.woodbury_inverse(invB,obj.C(i,:),1/obj.x(i));
-            flows = C1*(newInvB*obj.P);flows(i)=0;
-            if (obj.f(i)==0)
-               L(:,i)=0;
+            if (newInvB ~= Inf)
+               flows = C1*(newInvB*obj.P);flows(i)=0;
+               if (obj.f(i)==0)
+                  L(:,i)=0; L(i,i) = -1;
+               else
+                  L(:,i)=(flows-obj.f)/obj.f(i); % LODF
+               end
+               qq = abs(flows(:))./obj.lim(:);
+               number_of_violations = sum(abs(flows)>obj.lim(:));
+               margins = max(margins(:),qq(:)); % Update maximum violations
+               lines(abs(flows)>obj.lim(:))=lines(abs(flows)>obj.lim(:))+1; % mark dangerous lines
+               if (number_of_violations>0)
+                  k=k+1; % number of 'dangerous' N-1 contingecies
+               end
+               % Beautiful printing
+               msg = sprintf('\tProcessed %d/%d. Number of dangerous N-1 contingecies is %d : %d', i, Sz.r(obj.E),k);
+               fprintf([reverseStr, msg]);
+               reverseStr = repmat(sprintf('\b'), 1, length(msg));
             else
-               L(:,i)=(flows-obj.f)/obj.f(i); % LODF
+               C1_isl (i) = 1;
+               L(i,i) = -1;
             end
-            qq = abs(flows(:))./obj.lim(:);
-            number_of_violations = sum(abs(flows)>obj.lim(:));
-            margins = max(margins(:),qq(:)); % Update maximum violations
-            lines(abs(flows)>obj.lim(:))=lines(abs(flows)>obj.lim(:))+1; % mark dangerous lines
-            if (number_of_violations>0)
-               k=k+1; % number of 'dangerous' contingecies
-            end
-            % Beautiful printing
-            msg = sprintf('\tProcessed %d/%d. Number of dangerous N-1 contingecies is %d : %d', i, Sz.r(obj.E),k);
-            fprintf([reverseStr, msg]);
-            reverseStr = repmat(sprintf('\b'), 1, length(msg));
          end
          
          obj.L = L;
-         fprintf('\n\n\tN-1 analysis was performed,%d dangerous contigencies were found, %d lines are violated \n',k,sum(lines(:)>0));
+         fprintf('\n The size of N-1 islanding set is %d',sum(C1_isl(:)));
+         fprintf('\n\n\tN-1 analysis was performed,%d dangerous N-1 contigencies were found, %d lines are violated \n',k,sum(lines(:)>0));
          fullpath = fileparts(mfilename('fullpath'));
          cd(fullpath);
          pathfile = strcat(pwd,'/results/N_1_analysis_dangerous_lines_',obj.case_name,'.mat');
          limits = obj.lim;
-         save(pathfile,'lines','margins','L','limits');
+         save(pathfile,'lines','margins','L','limits','C1_isl');
       end
       
       function obj = N_2_analysis(obj,approach)
@@ -167,12 +172,13 @@ classdef Grid_class
             else
                obj.L = structure.L;
                obj.lim = structure.limits;
+               obj.C1_isl = structure.C1_isl;
                if (strcmp(sprintf(approach),sprintf('bruteforce')))
                   Grid_class.beauty_print('Start bruteforce N-2 analysis');
-                  obj = obj.run_N_2_bruteforce(ones(Sz.r(obj.E),Sz.r(obj.E)));
+                  obj = obj.run_N_2_bruteforce(ones(Sz.r(obj.E),Sz.r(obj.E))-eye(Sz.r(obj.E)));
                   fprintf('\n\tRunning time for brute force algorithm is %d sec \n',obj.t_brute);
                   [pathfile] = obj.create_full_path('/results/N_2_analysis_brute_force_algorithm',obj.case_name);
-                  cont_brute_force_algorithm = obj.brute_cont; 
+                  cont_brute_force_algorithm = obj.brute_cont;
                   save(pathfile,'cont_brute_force_algorithm');
                else
                   if (strcmp(sprintf(approach),sprintf('fast')))
@@ -191,21 +197,30 @@ classdef Grid_class
       
       function obj = run_N_2_fast(obj)
          % K.S.Turitsyn and P.A.Kaplunovich algorithm
+         C1_isl = obj.C1_isl;
+         C2_isl = zeros(Sz.r(obj.E),Sz.r(obj.E)); % double outage islanding contingencies
          Grid_class.beauty_print('Start fast N-2 analysis');
          tstart = tic;
-         A0 = ones(Sz.r(obj.E),Sz.r(obj.E)); % matrix that depics the A set (1 - pair is in set, 0 is not)
+         A0 = ones(Sz.r(obj.E),Sz.r(obj.E))-eye(Sz.r(obj.E)); % matrix that depics the A set (1 - pair is in set, 0 is not)
          B0 = ones(Sz.r(obj.E),Sz.r(obj.E)); % ---=--- B set
          A  = zeros(Sz.r(obj.E),Sz.r(obj.E)); % Axy matrix
          B  = zeros(Sz.r(obj.E),Sz.r(obj.E)); % Bxz matrix
          Denominator = ones(Sz.r(obj.E),Sz.r(obj.E));
          Numerator = ones(Sz.r(obj.E),Sz.r(obj.E));
          
-         A0(obj.f(:)==0,:)=0; % if f(i)=0 then we make an element of matrix A equal to zero
-         A0(abs(abs(obj.L(:))-1)<=10^-8)=0; % if lines are consequtive we don't consider them (because it is trivial contingency)
-         L1 = obj.L';
-         A0(abs(abs(L1(:))-1)<=10^-8)=0;
+         A0(C1_isl(:)==1,:) = 0;
+         A0(:,C1_isl(:)==1) = 0;
+         A0(abs(obj.f(:))<1e-8,:)=0; % if f(i)=0 then we make an element of matrix A equal to zero
+         A0(:,abs(obj.f(:))<1e-8)=0;
+         qq = obj.L.*obj.L';
+         tr = 1e-8; % treshold
+         A0(abs(qq-1)<=tr)=0; % if lines are consequtive we don't consider them (islanding case)
+         C2_isl(abs(qq-1)<=tr) = 1;
+         A0(abs(qq-1)<=tr)=0;
+         C2_isl(abs(qq-1)<=tr)= 1;
+         % to be 100% correct i need to filter out L'.*L = 1
          
-         % fprintf('\t Deleted %d consequtive lines\n',sum(abs(abs(obj.L(:))-1)<=10^-8));
+         fprintf('\t Size of C2_isl is %d\n',(sum(C2_isl(:))-Sz.r(C2_isl))/2);
          
          % now for all potential pairs that are still there we compute
          % elements of matrix Axy
@@ -217,69 +232,92 @@ classdef Grid_class
          Bn = -diag(1./(obj.lim+obj.f))*obj.L*diag(obj.f);
          Bn = Bn - diag(diag(Bn));
          Bp = Bp - diag(diag(Bp)); B0 = B0 - diag(diag(B0));
+         %B0(:,C1_isl(:)==1) = 0;
          
-         k = 0;  changing=1;
-         kmax = 4; % maximum number of iterations before stop
+         k = 0;  changing=1; 
+         number_islanding_contingencies = sum(obj.C1_isl(:))*Sz.r(obj.E)-sum(obj.C1_isl(:)) + sum(C2_isl(:))/2;
+         kmax = 10; % maximum number of iterations before stop
+         str = {};
          while (changing==1)&&(k<kmax)
             oldA = sum(A0(:)); oldB = sum(B0(:)); % remember number of pair to undertand when to stop
-            fprintf('\t %d iteration: number of potential confingecies::%d, B::%d\n',k,oldA/2,oldB);
+            fprintf('\t %d iteration: number of potential confingecies::%d, B::%d;   islanding contingencies: %d\n',k,oldA/2,oldB,number_islanding_contingencies);
             % PHASE I
             Wbuf1 = max((diag(max(Bp))*A),(diag(min(Bp))*A));
             Wbuf2 = max((diag(max(Bn))*A),(diag(min(Bn))*A));
             W = max(Wbuf1+Wbuf1',Wbuf2+Wbuf2'); 
+            
+            str{k+1,1} = A0; str{k+1,2} = B0;
+            str{k+1,6} = W;  str{k+1,3} = A; str{k+1,4} = Bp; str{k+1,5} = Bn;
+            
             A0(W<=1)=0; A(A0==0)=0;
+            
             
             % PHASE II
             Wbuf1 = max(max(Bp,[],2)*max(A),min(Bp,[],2)*min(A));
             Wbuf2 = max(max(Bn,[],2)*max(A),min(Bn,[],2)*min(A));
             Wb1 = max(Bp*diag(max(A,[],2))+Wbuf1,Bp*diag(min(A,[],2))+Wbuf1);
-            Wb2 = max(Bn*diag(max(A,[],2))+Wbuf2,Bn*diag(min(A,[],2))+Wbuf2);
-            W = max(Wb1,Wb2);
+            Wb2 = max(Bn*diag(max(A,[],2))+Wbuf2,Bn*diag(min(A,[],2))+Wbuf2); 
+            W = max(Wb1,Wb2); % bounding matrix for the set B
+            
+            str{k+1,7} = W;
+            
             B0(W<=1)=0; Bn(B0==0)=0;Bp(B0==0)=0; k=k+1;
+            
+            
             if (oldA == sum(A0(:)))&&(oldB == sum(B0(:)))
                changing = 0;
             end
          end
+         save('str.mat','str','-v7.3');
+         obj.Mask = A0;
+         fprintf('Running time of pruning loop is %d',toc(tstart));
          obj = obj.run_N_2_bruteforce(A0);
+         obj.filtered_size = sum(A0(:))/2;
          obj.t_fast = toc(tstart);
+         obj.C2_isl = C2_isl;
          fprintf('\n\tRunning time for fast algorithm is %d sec \n',obj.t_fast);
          [pathfile] = obj.create_full_path('/results/N_2_analysis_fast_algorithm',obj.case_name);
          cont_fast_algorithm = obj.brute_cont; 
-         save(pathfile,'cont_fast_algorithm');
+         save(pathfile,'cont_fast_algorithm','C1_isl','C2_isl');
       end
       
       function obj = run_N_2_bruteforce(obj,A0)
-         k=0; p=0; reverseStr='';
-         brute_cont = []; brute_cont_fake = [];
+         k=0; reverseStr='';
+         C2_isl = zeros(Sz.r(obj.E),Sz.r(obj.E));
+         brute_cont = []; 
          str = sprintf('Bruteforce enumeration over %d pairs',sum(A0(:))/2);
          fprintf('\n\t%s \n',str);
          tstart = tic;
          for i=1:(Sz.r(obj.L)-1)
             if (sum(A0(i,:))>0)
+               %m = find(A0(i,:)==1);
+               %m = m(find(m(:)>i));
                for j=(i+1):Sz.r(obj.L)
                   if A0(i,j)~=0 % if we consider this pair
-                     if abs(det(obj.L([i,j],[i,j])))<10^(-8)
-                        p=p+1;
-                        brute_cont_fake(p,1:2)=[i,j];
+                     if abs(det(obj.L([i,j],[i,j])))<1e-10
+                        C2_isl(i,j) = 1;
+                        C2_isl(j,i) = 1;
                      else
-                        f_new = obj.f(:) + (obj.L(:,[i,j])*(-obj.L([i,j],[i,j])\obj.f([i,j])));
-                        if (sum(obj.lim<abs(f_new))>0)
+                        xq = (obj.L([i,j],[i,j])\obj.f([i,j]));
+                        f_new = obj.f(:) - obj.L(:,[i,j])*xq;
+                        f_new(i)=0; f_new(j)=0;
+                        if sum(obj.lim(:)-abs(f_new(:))<1e-10)>0
                            k=k+1;
                            brute_cont(k,1:3)=[i,j,sum(obj.lim<abs(f_new))];
                         end
                      end
                      % Beautiful printing
                      completed = (Sz.r(obj.L)*(i-1)+1-(i+1)*i/2+j-i)/((Sz.r(obj.L)-1)*Sz.r(obj.L)/2);
-                     msg = sprintf('\tProcessed %0.0f percent. Number of contingencies %d; fake %d',100*completed,k,p);
+                     msg = sprintf('\tProcessed %0.0f percent. Number of contingencies %d; fake %d',100*completed,k,sum(C2_isl(:))/2);
                      fprintf([reverseStr, msg]);
                      reverseStr = repmat(sprintf('\b'), 1, length(msg));
                   end
                end
             end
          end
-         msg = sprintf('\tProcessed %0.0f percent. Number of contingencies %d; fake %d',100,k,p);
+         msg = sprintf('\tProcessed %0.0f percent. Number of contingencies %d; fake %d',100,k,sum(C2_isl(:))/2);
          fprintf([reverseStr, msg]);
-         obj.brute_cont_fake = brute_cont_fake;
+         obj.C2_isl = C2_isl;
          obj.brute_cont = brute_cont;
          obj.t_brute = toc(tstart);
       end
@@ -290,7 +328,50 @@ classdef Grid_class
          obj.lim(lines(:)>0)=margins(lines(:)>0).*obj.lim(lines(:)>0)/mm; %increase 
       end
       
-      
+      function obj = N_1_analysis(obj)
+         Grid_class.beauty_print('   Start N-1 analysis  ');
+         invB = inv(obj.B);
+         reverseStr=''; k=0; lines = zeros(Sz.r(obj.E),1);
+         margins = zeros(Sz.r(obj.E),1); % vector of maximum violations
+         L = zeros(Sz.r(obj.E),Sz.r(obj.E));
+         C1 = diag(1./obj.x)*obj.C; % calculate this matrix once for better performance
+         C1_isl = zeros(Sz.r(obj.E),1); % vector of radial contingencies
+         for i=1:Sz.r(obj.E)
+            % calculate 1/q factors
+            q_inv = 1 - C1(i,:) * invB * obj.C(i,:)';
+            if abs(q_inv)>1e-10 
+               %vector d
+               L(:,i) =  C1 * (invB * obj.C(i,:)') / q_inv;
+               L(i,i) = -1;
+               flows = obj.f + L(:,i) * obj.f(i);
+               flows(i)=0;
+               qq = abs(flows(:))./obj.lim(:);
+               number_of_violations = sum(abs(flows(:))>obj.lim(:));
+               margins = max(margins(:),qq(:)); % Update maximum violations
+               tr = 1e-10;
+               lines(obj.lim(:)-abs(flows(:))<tr)=lines(obj.lim(:)-abs(flows(:))<tr)+1; % mark dangerous lines
+               if (number_of_violations>0)
+                  k=k+1; % number of 'dangerous' N-1 contingecies
+               end
+               % Beautiful printing
+               msg = sprintf('\tProcessed %d/%d. Number of dangerous N-1 contingecies is %d : %d', i, Sz.r(obj.E),k);
+               fprintf([reverseStr, msg]);
+               reverseStr = repmat(sprintf('\b'), 1, length(msg));
+            else
+               C1_isl (i) = 1;
+               L(i,i) = -1;
+            end
+         end
+         
+         obj.L = L;
+         fprintf('\n The size of N-1 islanding set is %d',sum(C1_isl(:)));
+         fprintf('\n\n\tN-1 analysis was performed,%d dangerous N-1 contigencies were found, %d lines are violated \n',k,sum(lines(:)>0));
+         fullpath = fileparts(mfilename('fullpath'));
+         cd(fullpath);
+         pathfile = strcat(pwd,'/results/N_1_analysis_dangerous_lines_',obj.case_name,'.mat');
+         limits = obj.lim;
+         save(pathfile,'lines','margins','L','limits','C1_isl');
+      end
    end
    
    methods(Static)
@@ -299,8 +380,16 @@ classdef Grid_class
          fprintf('************%s************\n',text);
          fprintf('***********************************************\n');
       end
+      function cm = cmp(A,B)
+         RE = 1e-8;
+         cm = abs(A-B) < RE*max(abs(A),abs(B));
+      end
       function [inversed] = woodbury_inverse(invA,U,C)
-         inversed = invA-invA*U'*((inv(C)+U*invA*U')\U)*invA;
+         if ~Grid_class.cmp(det(inv(C)+U*invA*U'),0)
+            inversed = invA-invA*U'*((inv(C)+U*invA*U')\U)*invA;
+         else
+            inversed = Inf;
+         end
       end
       function [exists,structure] = file_exists(relative_name,case_name)
          pathfile = Grid_class.create_full_path(relative_name,case_name);
