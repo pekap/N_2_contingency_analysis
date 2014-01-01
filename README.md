@@ -1,14 +1,14 @@
 ## Fast N-2 contingency analysis algorithm
 
-Basic implementation of fast N-2 contingecy analysis algorithm developed by Prof. Konstya Turitsyn MIT research group
+Basic implementation of fast N-2 contingecy analysis algorithm developed by Prof. Kostya Turitsyn MIT research group.  
 The algorithm aims to find all dangerous N-2 contingencies in the grid. 
 We call dangerous N-k contingency a set of k elements which tripping leads to violation of at least one constraint in 
-power grid. 
+the given power grid. 
 
-In this implementation we consider only line as contingency elements and their power limits as constraints.
+In this implementation we consider only lines as contingency elements and their power limits as constraints.
 
 ### How to run
-Download this repo and add path to it to matlab path collection. 
+Clone this repo and add path to it to matlab path collection. 
 You can see example of usage in `code/tests/test_grid_class.m` file. In that file we
 
 1. Load a MATPOWER grid case from `/code/cases/` folder
@@ -94,7 +94,7 @@ For further explanation see [description of the code](https://github.com/pekap/N
 
 We use dcopf solver and grid cases from [MATPOWER](http://www.pserc.cornell.edu/matpower/) MATLAB package, which is included in our repo.
   
-The algorithm presented here was developed in Prof. Kostya Turitsyn research group at MIT. Links to related works:  
+The algorithm presented here was developed by Prof. Kostya Turitsyn research group at MIT. Links to related works:  
 [Original paper](http://arxiv.org/pdf/1211.0728.pdf)  
 [Elaborated approach for generators as contingencies](http://arxiv.org/pdf/1303.3938.pdf)
 
